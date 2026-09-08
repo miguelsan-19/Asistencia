@@ -71,3 +71,10 @@ export function eliminarAsistencia(id: number): void {
   const registros = cargarRegistros().filter((r) => r.id !== id);
   guardarRegistros(registros);
 }
+
+export function reemplazarAsistencias(nuevos: Asistencia[]): Asistencia[] {
+  const conIds = nuevos.map((r, i) => ({ ...r, id: i + 1 }));
+  guardarRegistros(conIds);
+  return conIds;
+}
+

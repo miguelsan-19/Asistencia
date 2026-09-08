@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import type { Asistencia } from './types';
 import { TODOS_CAMPOS_DIA } from './types';
+import { calcularTotal } from './utils';
 
 const DIAS = ['Lu', 'Ma', 'MI', 'Ju', 'Vi', 'Sa', 'Do'] as const;
 
@@ -139,3 +140,88 @@ export async function exportarAExcel(records: Asistencia[]) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+function valorDia(cell: ExcelJS.Cell): number {
+  const v = cell.value;
+  if (v === null || v === undefined || v === '') return 0;
+  const n = Number(v);
+  if (Number.isNaN(n)) return 0;
+  return Math.min(1, Math.max(0, Math.round(n * 2) / 2));
+}
+
+function texto(cell: ExcelJS.Cell): string {
+  const v = cell.value;
+  if (v === null || v === undefined) return '';
+  return String(v);
+}
+
+/**
+ * Importa los trabajadores de una hoja Excel usando el mismo formato que
+ * exporta la aplicación (cabeceras con NOMBRE en la columna B).
+ * Devuelve una lista de registros con sus totales recalculados.
+ */
+export async function importarDeExcel(file: File): Promise<Asistencia[]> {
+  const buffer = await file.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const ws = workbook.worksheets[0];
+  if (!ws) throw new Error('El archivo no contiene hojas de cálculo');
+
+  // Localizar la fila de cabeceras buscando "NOMBRE" en la columna B
+  let headerRow = -1;
+  ws.eachRow((row, rowNumber) => {
+    if (headerRow !== -1) return;
+    const cellB = row.getCell(2).value;
+    if (
+      cellB !== null &&
+      cellB !== undefined &&
+      String(cellB).trim().toUpperCase() === 'NOMBRE'
+    ) {
+      headerRow = rowNumber;
+    }
+  });
+  if (headerRow === -1) {
+    throw new Error(
+      'No se encontró la cabecera "NOMBRE". Asegúrate de que el Excel tenga una columna NOMBRE (columna B).',
+    );
+  }
+
+  const result: Asistencia[] = [];
+  const dataStart = headerRow + 1;
+
+  for (let rowNumber = dataStart; rowNumber <= ws.rowCount; rowNumber++) {
+    const row = ws.getRow(rowNumber);
+    const nombre = texto(row.getCell(2)).trim();
+    if (!nombre) continue; // saltar filas vacías
+
+    const record = {
+      nombre,
+      lu_1: valorDia(row.getCell(3)),
+      ma_1: valorDia(row.getCell(4)),
+      mi_1: valorDia(row.getCell(5)),
+      ju_1: valorDia(row.getCell(6)),
+      vi_1: valorDia(row.getCell(7)),
+      sa_1: valorDia(row.getCell(8)),
+      do_1: valorDia(row.getCell(9)),
+      lu_2: valorDia(row.getCell(11)),
+      ma_2: valorDia(row.getCell(12)),
+      mi_2: valorDia(row.getCell(13)),
+      ju_2: valorDia(row.getCell(14)),
+      vi_2: valorDia(row.getCell(15)),
+      sa_2: valorDia(row.getCell(16)),
+      do_2: valorDia(row.getCell(17)),
+    };
+
+    const finalRecord: Asistencia = {
+      id: 0,
+      ...record,
+      total: calcularTotal(record),
+      observaciones: texto(row.getCell(20)) || null,
+    };
+    result.push(finalRecord);
+  }
+
+  return result;
+}
+

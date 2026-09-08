@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   type Asistencia,
   type CampoDia,
@@ -11,9 +11,10 @@ import {
   crearAsistencia,
   eliminarAsistencia,
   listarAsistencias,
+  reemplazarAsistencias,
 } from '../api';
 import { normalizarValor, calcularTotal, formatTotal } from '../utils';
-import { exportarAExcel } from '../excel';
+import { exportarAExcel, importarDeExcel } from '../excel';
 
 const thBase =
   'border border-gray-400 bg-slate-200 px-2 py-1.5 font-bold uppercase tracking-wide';
@@ -28,6 +29,8 @@ export default function AttendanceTable() {
   const [error, setError] = useState<string | null>(null);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [exportando, setExportando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setRegistros(listarAsistencias());
@@ -87,6 +90,36 @@ export default function AttendanceTable() {
     }
   };
 
+  const importar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportando(true);
+    setError(null);
+    try {
+      const importados = await importarDeExcel(file);
+      if (importados.length === 0) {
+        setError('El archivo no contiene trabajadores para importar.');
+        return;
+      }
+      if (
+        !window.confirm(
+          `Se importarán ${importados.length} trabajador(es). ¿Reemplazar la tabla actual?`,
+        )
+      ) {
+        return;
+      }
+      const conIds = reemplazarAsistencias(importados);
+      setRegistros(conIds);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error al importar el Excel',
+      );
+    } finally {
+      setImportando(false);
+    }
+  };
+
   return (
     <div className="space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -97,6 +130,20 @@ export default function AttendanceTable() {
           <span className="text-sm text-emerald-600">
             Los cambios se guardan en este navegador. Exporta el Excel para respaldar en disco.
           </span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={importar}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importando}
+            className="rounded bg-slate-600 px-4 py-2 text-sm font-bold text-white shadow hover:bg-slate-700 disabled:opacity-60"
+          >
+            {importando ? 'Importando…' : 'Importar Excel'}
+          </button>
           <button
             onClick={exportar}
             disabled={exportando}
