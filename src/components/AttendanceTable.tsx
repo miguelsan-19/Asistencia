@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type Asistencia,
   type CampoDia,
@@ -13,7 +13,12 @@ import {
   listarAsistencias,
   reemplazarAsistencias,
 } from '../api';
-import { normalizarValor, calcularTotal, formatTotal } from '../utils';
+import {
+  normalizarValor,
+  calcularTotal,
+  formatTotal,
+  ordenarPorNombre,
+} from '../utils';
 import { exportarAExcel, importarDeExcel } from '../excel';
 
 const thBase =
@@ -36,6 +41,11 @@ export default function AttendanceTable() {
     setRegistros(listarAsistencias());
     setCargando(false);
   }, []);
+
+  const registrosOrdenados = useMemo(
+    () => ordenarPorNombre(registros),
+    [registros],
+  );
 
   const actualizarRegistro = useCallback((nuevo: Asistencia) => {
     setRegistros((prev) =>
@@ -80,7 +90,7 @@ export default function AttendanceTable() {
     setExportando(true);
     setError(null);
     try {
-      await exportarAExcel(registros);
+      await exportarAExcel(registrosOrdenados);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error al generar el Excel',
@@ -212,7 +222,7 @@ export default function AttendanceTable() {
               </tr>
             </thead>
             <tbody>
-              {registros.map((registro, idx) => (
+              {registrosOrdenados.map((registro, idx) => (
                 <tr
                   key={registro.id}
                   className={idx % 2 === 1 ? 'bg-gray-50' : 'bg-white'}
@@ -269,7 +279,7 @@ export default function AttendanceTable() {
                   </td>
                 </tr>
               ))}
-              {registros.length === 0 && (
+              {registrosOrdenados.length === 0 && (
                 <tr>
                   <td colSpan={20} className="py-8 text-center text-slate-500">
                     Sin registros. Agrega un trabajador para comenzar.

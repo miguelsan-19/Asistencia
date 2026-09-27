@@ -19,6 +19,13 @@ export function formatTotal(v: number): string {
   return Number.isInteger(v) ? String(v) : v.toFixed(1);
 }
 
+/** Ordena una lista de asistencias alfabéticamente por nombre (sin importar mayúsculas/acentos). */
+export function ordenarPorNombre(registros: Asistencia[]): Asistencia[] {
+  return [...registros].sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }),
+  );
+}
+
 export function nuevoRegistroVacio(): Asistencia {
   return {
     id: 0,
