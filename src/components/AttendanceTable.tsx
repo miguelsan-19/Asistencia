@@ -14,10 +14,10 @@ import {
   reemplazarAsistencias,
 } from '../api';
 import {
-  normalizarValor,
   calcularTotal,
   formatTotal,
   ordenarPorNombre,
+  siguienteValorDia,
 } from '../utils';
 import { exportarAExcel, importarDeExcel } from '../excel';
 
@@ -54,8 +54,8 @@ export default function AttendanceTable() {
     actualizarAsistencia(nuevo.id, nuevo);
   }, []);
 
-  const cambiarDia = (registro: Asistencia, campo: CampoDia, raw: string) => {
-    const valor = normalizarValor(raw);
+  const cambiarDia = (registro: Asistencia, campo: CampoDia) => {
+    const valor = siguienteValorDia(registro[campo]);
     const proximo: Asistencia = { ...registro, [campo]: valor };
     proximo.total = calcularTotal(proximo);
     actualizarRegistro(proximo);
@@ -239,18 +239,18 @@ export default function AttendanceTable() {
                   {CAMPOS_SEMANA_1.map((campo) => (
                     <td key={campo} className={tdBase}>
                       <DiaInput
-                        valor={registro[campo]}
-                        onChange={(raw) => cambiarDia(registro, campo, raw)}
-                      />
+                          valor={registro[campo]}
+                          onClic={() => cambiarDia(registro, campo)}
+                        />
                     </td>
                   ))}
                   <td className={`${tdBase} bg-gray-100`}></td>
                   {CAMPOS_SEMANA_2.map((campo) => (
                     <td key={campo} className={tdBase}>
                       <DiaInput
-                        valor={registro[campo]}
-                        onChange={(raw) => cambiarDia(registro, campo, raw)}
-                      />
+                          valor={registro[campo]}
+                          onClic={() => cambiarDia(registro, campo)}
+                        />
                     </td>
                   ))}
                   <td className={`${tdBase} bg-gray-100`}></td>
@@ -318,21 +318,27 @@ export default function AttendanceTable() {
 
 function DiaInput({
   valor,
-  onChange,
+  onClic,
 }: {
   valor: number;
-  onChange: (raw: string) => void;
+  onClic: () => void;
 }) {
+  const estado =
+    valor >= 1
+      ? 'bg-emerald-500 text-white font-bold'
+      : valor >= 0.5
+        ? 'bg-amber-400 text-amber-900 font-bold'
+        : 'bg-gray-100 text-slate-400 hover:bg-gray-200';
+  const etiqueta = valor >= 1 ? '✓' : valor >= 0.5 ? '½' : '';
+
   return (
-    <input
-      type="number"
-      min={0}
-      max={1}
-      step={0.5}
-      value={formatTotal(valor)}
-      onChange={(e) => onChange(e.target.value)}
-      onClick={(e) => e.currentTarget.select()}
-      className={inputBase}
-    />
+    <button
+      type="button"
+      title="Clic para ciclar: 1 → ½ → 0"
+      onClick={onClic}
+      className={`${estado} w-full cursor-pointer rounded py-1 text-center transition-colors select-none`}
+    >
+      {etiqueta}
+    </button>
   );
 }

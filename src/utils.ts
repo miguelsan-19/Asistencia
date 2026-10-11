@@ -7,6 +7,13 @@ export function normalizarValor(raw: string | number): number {
   return Math.min(1, Math.max(0, Math.round(n * 2) / 2));
 }
 
+/** Cicla el valor de un día: 0 → 1 → 0.5 → 0. */
+export function siguienteValorDia(actual: number): number {
+  if (actual >= 1) return 0.5;
+  if (actual >= 0.5) return 0;
+  return 1;
+}
+
 export function calcularTotal(
   registro: Pick<Asistencia, CampoDia> | Partial<Asistencia>,
 ): number {
